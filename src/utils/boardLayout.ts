@@ -2,27 +2,38 @@ import { SpecialCell, SpecialCellType } from '@/types/game';
 
 const BOARD_SIZE = 15;
 
-// Définition des positions des cases spéciales (inspiré du Scrabble)
+// Définition des positions des cases spéciales selon les règles du Triolet
 const SPECIAL_POSITIONS: { [key: string]: SpecialCellType } = {
-  // Cases Triple (aux coins et quelques positions stratégiques)
-  '0,0': 'triple', '0,7': 'triple', '0,14': 'triple',
-  '7,0': 'triple', '7,14': 'triple',
-  '14,0': 'triple', '14,7': 'triple', '14,14': 'triple',
+  // Cases Rejouer: a8, b2, b14, h1, h15, n2, n14, o8
+  '7,0': 'replay',   // a8
+  '1,1': 'replay',   // b2
+  '13,1': 'replay',  // b14
+  '0,7': 'replay',   // h1
+  '14,7': 'replay',  // h15
+  '1,13': 'replay',  // n2
+  '13,13': 'replay', // n14
+  '7,14': 'replay',  // o8
   
-  // Cases Double (positions stratégiques)
-  '1,1': 'double', '2,2': 'double', '3,3': 'double', '4,4': 'double',
-  '1,13': 'double', '2,12': 'double', '3,11': 'double', '4,10': 'double',
-  '13,1': 'double', '12,2': 'double', '11,3': 'double', '10,4': 'double',
-  '13,13': 'double', '12,12': 'double', '11,11': 'double', '10,10': 'double',
+  // Cases Doubles: d8, e5, e11, h4, h8, h12, k5, k11, l8
+  '7,3': 'double',   // d8
+  '4,4': 'double',   // e5
+  '10,4': 'double',  // e11
+  '3,7': 'double',   // h4
+  '7,7': 'double',   // h8
+  '11,7': 'double',  // h12
+  '4,10': 'double',  // k5
+  '10,10': 'double', // k11
+  '7,11': 'double',  // l8
   
-  // Cases Rejouer (quelques positions centrales)
-  '7,7': 'replay', // Centre du plateau
-  '6,6': 'replay', '6,8': 'replay', '8,6': 'replay', '8,8': 'replay',
-  '5,7': 'replay', '9,7': 'replay', '7,5': 'replay', '7,9': 'replay',
-  
-  // Autres cases doubles
-  '5,1': 'double', '9,1': 'double', '1,5': 'double', '1,9': 'double',
-  '5,13': 'double', '9,13': 'double', '13,5': 'double', '13,9': 'double',
+  // Cases Triples: b5, b11, e2, e14, k2, k14, n5, n11
+  '4,1': 'triple',   // b5
+  '10,1': 'triple',  // b11
+  '1,4': 'triple',   // e2
+  '13,4': 'triple',  // e14
+  '1,10': 'triple',  // k2
+  '13,10': 'triple', // k14
+  '4,13': 'triple',  // n5
+  '10,13': 'triple', // n11
 };
 
 export const createSpecialCellsLayout = (): SpecialCell[][] => {
