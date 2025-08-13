@@ -8,6 +8,8 @@ interface GameStatusProps {
   currentPlayer: Player;
   winner?: Player;
   onRestart: () => void;
+  playerScores: { [key in Player]: number };
+  hasReplayTurn: boolean;
 }
 
 export const GameStatus = ({
@@ -15,10 +17,25 @@ export const GameStatus = ({
   currentPlayer,
   winner,
   onRestart,
+  playerScores,
+  hasReplayTurn,
 }: GameStatusProps) => {
   if (gameStatus === 'playing') {
     return (
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-4">
+        {/* Scores */}
+        <div className="flex justify-center gap-8 mb-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-game-player1">Joueur 1</div>
+            <div className="text-3xl font-extrabold">{playerScores[1]}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-game-player2">Joueur 2</div>
+            <div className="text-3xl font-extrabold">{playerScores[2]}</div>
+          </div>
+        </div>
+        
+        {/* Tour actuel */}
         <div className="flex items-center justify-center gap-2">
           <div
             className={cn(
@@ -28,10 +45,11 @@ export const GameStatus = ({
           />
           <span className="text-lg font-semibold">
             Au tour du Joueur {currentPlayer}
+            {hasReplayTurn && " (Tour bonus !)"}
           </span>
         </div>
         <p className="text-sm text-muted-foreground">
-          Formez une ligne de 3 pions qui totalise 15 !
+          Formez une ligne qui totalise 15 ! Les cases spéciales multiplient la valeur des pions.
         </p>
       </div>
     );

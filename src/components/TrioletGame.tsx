@@ -48,15 +48,18 @@ export const TrioletGame = () => {
             currentPlayer={gameState.currentPlayer}
             winner={gameState.winner}
             onRestart={handleRestart}
+            playerScores={gameState.playerScores}
+            hasReplayTurn={gameState.hasReplayTurn}
           />
         </Card>
 
         {/* Main Game Area */}
-        <div className="grid lg:grid-cols-2 gap-8 items-start">
+        <div className="space-y-8">
           {/* Game Board */}
           <div className="flex justify-center">
             <GameBoard
               board={gameState.board}
+              specialCells={gameState.specialCells}
               onCellClick={handleCellClick}
               winningLine={gameState.winningLine}
               isInteractive={gameState.gameStatus === 'playing' && selectedPion !== null}
@@ -65,7 +68,7 @@ export const TrioletGame = () => {
 
           {/* Pion Selector */}
           {gameState.gameStatus === 'playing' && (
-            <Card className="p-6">
+            <Card className="p-6 max-w-md mx-auto">
               <PionSelector
                 availablePions={gameState.availablePions}
                 currentPlayer={gameState.currentPlayer}
@@ -79,14 +82,18 @@ export const TrioletGame = () => {
         {/* Rules */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Règles du jeu</h3>
-          <div className="grid md:grid-cols-2 gap-4 text-sm text-muted-foreground">
+          <div className="grid md:grid-cols-3 gap-4 text-sm text-muted-foreground">
             <div>
               <h4 className="font-medium text-foreground mb-2">Objectif</h4>
-              <p>Être le premier à former une ligne (horizontale, verticale ou diagonale) de 3 pions dont la somme est exactement 15.</p>
+              <p>Formez une ligne (3+ pions consécutifs) dont la somme est exactement 15. Les cases spéciales multiplient la valeur des pions !</p>
             </div>
             <div>
               <h4 className="font-medium text-foreground mb-2">Comment jouer</h4>
-              <p>Chacun votre tour, sélectionnez un pion numéroté (1-9) et placez-le sur le plateau. Chaque pion ne peut être utilisé qu'une seule fois.</p>
+              <p>Sélectionnez un pion (1-9) et placez-le sur le plateau 15x15. Chaque pion ne peut être utilisé qu'une seule fois.</p>
+            </div>
+            <div>
+              <h4 className="font-medium text-foreground mb-2">Cases spéciales</h4>
+              <p><strong>2x/3x :</strong> Multiplient la valeur du pion. <strong>↻ :</strong> Vous rejouez un tour supplémentaire.</p>
             </div>
           </div>
         </Card>
