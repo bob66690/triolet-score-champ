@@ -19,7 +19,7 @@ const SPECIAL_POSITIONS: { [key: string]: SpecialCellType } = {
   '4,4': 'double',   // e5
   '10,4': 'double',  // e11
   '3,7': 'double',   // h4
-  '7,7': 'double',   // h8
+  '7,7': 'doubledebut',   // h8
   '11,7': 'double',  // h12
   '4,10': 'double',  // k5
   '10,10': 'double', // k11
@@ -59,10 +59,12 @@ export const getSpecialCellColor = (type: SpecialCellType): string => {
   switch (type) {
     case 'double':
       return 'bg-blue-100 border-blue-300';
+	case 'doubledebut':
+      return 'bg-orange-100 border-orange-300';
     case 'triple':
-      return 'bg-red-100 border-red-300';
-    case 'replay':
       return 'bg-green-100 border-green-300';
+    case 'replay':
+      return 'bg-purple-100 border-purple-300';
     default:
       return 'bg-game-cell border-border';
   }
@@ -71,9 +73,11 @@ export const getSpecialCellColor = (type: SpecialCellType): string => {
 export const getSpecialCellLabel = (type: SpecialCellType): string => {
   switch (type) {
     case 'double':
-      return '2x';
+      return 'x2';
+    case 'doubledebut':
+      return '+';
     case 'triple':
-      return '3x';
+      return 'x3';
     case 'replay':
       return '↻';
     default:
