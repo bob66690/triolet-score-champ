@@ -52,6 +52,14 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				game: {
+					board: 'hsl(var(--game-board))',
+					cell: 'hsl(var(--game-cell))',
+					'cell-hover': 'hsl(var(--game-cell-hover))',
+					player1: 'hsl(var(--player1))',
+					player2: 'hsl(var(--player2))',
+					'winning-line': 'hsl(var(--winning-line))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -62,6 +70,16 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				}
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-accent': 'var(--gradient-accent)',
+				'gradient-board': 'var(--gradient-board)'
+			},
+			boxShadow: {
+				'game': 'var(--shadow-game)',
+				'pion': 'var(--shadow-pion)',
+				'hover': 'var(--shadow-hover)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
