@@ -21,7 +21,7 @@ export const GameBoard = ({
   const [hoveredCell, setHoveredCell] = useState<Position | null>(null);
 
   const isWinningCell = (row: number, col: number) => {
-    return winningLine.some(cell => cell.row === row && cell.col === col);
+    return winningLine?.some(cell => cell.row === row && cell.col === col) || false;
   };
 
   const handleCellClick = (row: number, col: number) => {
