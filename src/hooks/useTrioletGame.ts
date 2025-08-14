@@ -1,6 +1,35 @@
 import { useState, useCallback } from 'react';
-import { GameState, Player, Position } from '@/types/game';
+import { GameState, Player, Position, SpecialCellType, PlayerAction } from '@/types/game';
 import { createSpecialCellsLayout } from '@/utils/boardLayout';
+
+// Initial pion bag configuration
+const INITIAL_PION_BAG = {
+  '0': 9, '1': 9, '2': 8, '3': 8, '4': 7, '5': 8, '6': 6, '7': 6,
+  '8': 4, '9': 4, '10': 3, '11': 3, '12': 2, '13': 2, '14': 1, '15': 1, 'X': 2
+};
+
+// Helper function to draw pions from bag
+const drawPionsFromBag = (bag: { [key: string]: number }, count: number): (number | 'X')[] => {
+  const availablePions = Object.entries(bag).filter(([_, count]) => count > 0);
+  const drawnPions: (number | 'X')[] = [];
+  
+  for (let i = 0; i < count && availablePions.length > 0; i++) {
+    const randomIndex = Math.floor(Math.random() * availablePions.reduce((sum, [_, count]) => sum + count, 0));
+    let currentSum = 0;
+    
+    for (const [value, pionCount] of availablePions) {
+      currentSum += pionCount;
+      if (randomIndex < currentSum) {
+        const pionValue = value === 'X' ? 'X' : parseInt(value);
+        drawnPions.push(pionValue);
+        bag[value]--;
+        break;
+      }
+    }
+  }
+  
+  return drawnPions;
+};
 
 const BOARD_SIZE = 15;
 
@@ -66,17 +95,25 @@ const generateWinningCombinations = () => {
 const WINNING_COMBINATIONS = generateWinningCombinations();
 
 export const useTrioletGame = () => {
-  const [gameState, setGameState] = useState<GameState>({
-    board: Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)),
-    currentPlayer: 1,
-    availablePions: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [i + 1, true])),
-    gameStatus: 'playing',
-    specialCells: createSpecialCellsLayout(),
-    playerScores: { 1: 0, 2: 0 },
-    hasReplayTurn: false,
+  const [gameState, setGameState] = useState<GameState>(() => {
+    const initialBag = { ...INITIAL_PION_BAG };
+    return {
+      board: Array(15).fill(null).map(() => Array(15).fill(null)),
+      currentPlayer: 1,
+      pionBag: initialBag,
+      playerHands: {
+        1: drawPionsFromBag(initialBag, 3),
+        2: drawPionsFromBag(initialBag, 3),
+      },
+      gameStatus: 'playing',
+      specialCells: createSpecialCellsLayout(),
+      playerScores: { 1: 0, 2: 0 },
+      hasReplayTurn: false,
+      selectedPionsForTurn: [],
+    };
   });
 
-  const checkWinningLine = useCallback((board: (number | null)[][]) => {
+  const checkWinningLine = useCallback((board: (number | string | null)[][]) => {
     for (const combination of WINNING_COMBINATIONS) {
       const values = combination.map(([row, col]) => board[row][col]);
       if (values.every(val => val !== null) && values.length >= 3) {
@@ -85,87 +122,148 @@ export const useTrioletGame = () => {
         for (let i = 0; i < combination.length; i++) {
           const [row, col] = combination[i];
           const value = values[i]!;
+          // Convert value to number for calculation (handle jokers separately)
+          const numValue = typeof value === 'string' ? 0 : value;
           const multiplier = gameState.specialCells[row][col].multiplier || 1;
-          sum += value * multiplier;
+          sum += numValue * multiplier;
         }
         
         if (sum === 15) {
-          return {
-            winner: true,
-            line: combination.map(([row, col]) => ({ row, col })),
-            score: sum
-          };
+          return combination.map(([row, col]) => ({ row, col }));
         }
       }
     }
-    return { winner: false };
+    return null;
   }, [gameState.specialCells]);
 
-  const placePion = useCallback((position: Position, pionValue: number) => {
-    if (
-      gameState.gameStatus !== 'playing' ||
-      gameState.board[position.row][position.col] !== null ||
-      !gameState.availablePions[pionValue]
-    ) {
-      return false;
-    }
-
-    setGameState(prev => {
-      const newBoard = prev.board.map(row => [...row]);
-      newBoard[position.row][position.col] = pionValue;
-
-      const winCheck = checkWinningLine(newBoard);
-      const newAvailablePions = { ...prev.availablePions };
-      newAvailablePions[pionValue] = false;
-
-      // Vérifier si c'est une case "rejouer"
-      const isReplayCell = prev.specialCells[position.row][position.col].type === 'replay';
+  const placePions = useCallback((positions: Position[], pionValues: (number | 'X')[]): boolean => {
+    if (positions.length !== pionValues.length) return false;
+    
+    setGameState(prevState => {
+      if (prevState.gameStatus !== 'playing') return prevState;
       
-      // Calculer le score pour ce coup
-      const cellMultiplier = prev.specialCells[position.row][position.col].multiplier || 1;
-      const moveScore = pionValue * cellMultiplier;
-      const newScores = { ...prev.playerScores };
-      newScores[prev.currentPlayer] += moveScore;
-
-      const isGameFull = Object.values(newAvailablePions).every(available => !available);
-      let newCurrentPlayer = prev.currentPlayer;
-      
-      // Si pas de case rejouer et pas de victoire, changer de joueur
-      if (!isReplayCell && !winCheck.winner) {
-        newCurrentPlayer = prev.currentPlayer === 1 ? 2 : 1;
+      // Validate all positions are empty and pions are available in hand
+      for (let i = 0; i < positions.length; i++) {
+        const { row, col } = positions[i];
+        if (prevState.board[row][col] !== null) return prevState;
+        if (!prevState.playerHands[prevState.currentPlayer].includes(pionValues[i])) return prevState;
       }
-
+      
+      const newBoard = prevState.board.map(r => [...r]);
+      let totalEffectiveValue = 0;
+      
+      // Place all pions and calculate total value
+      for (let i = 0; i < positions.length; i++) {
+        const { row, col } = positions[i];
+        const pionValue = pionValues[i];
+        let effectiveValue = pionValue === 'X' ? 0 : pionValue; // Joker logic to be handled separately
+        
+        // Apply special cell multipliers
+        const specialCell = prevState.specialCells[row][col];
+        if (specialCell.type === 'double') {
+          effectiveValue = effectiveValue * 2;
+        } else if (specialCell.type === 'triple') {
+          effectiveValue = effectiveValue * 3;
+        }
+        
+        newBoard[row][col] = effectiveValue;
+        totalEffectiveValue += effectiveValue;
+      }
+      
+      const winningLine = checkWinningLine(newBoard);
+      const isWin = winningLine !== null;
+      
+      // Remove used pions from player hand
+      const newPlayerHands = { ...prevState.playerHands };
+      for (const pionValue of pionValues) {
+        const index = newPlayerHands[prevState.currentPlayer].indexOf(pionValue);
+        if (index > -1) {
+          newPlayerHands[prevState.currentPlayer].splice(index, 1);
+        }
+      }
+      
+      // Draw new pions to refill hand to 3
+      const newBag = { ...prevState.pionBag };
+      const newPions = drawPionsFromBag(newBag, 3 - newPlayerHands[prevState.currentPlayer].length);
+      newPlayerHands[prevState.currentPlayer].push(...newPions);
+      
+      // Update scores
+      const newPlayerScores = { ...prevState.playerScores };
+      newPlayerScores[prevState.currentPlayer] += totalEffectiveValue;
+      
       return {
-        ...prev,
+        ...prevState,
         board: newBoard,
-        currentPlayer: newCurrentPlayer,
-        availablePions: newAvailablePions,
-        gameStatus: winCheck.winner ? 'won' : isGameFull ? 'draw' : 'playing',
-        winner: winCheck.winner ? prev.currentPlayer : undefined,
-        winningLine: winCheck.line || undefined,
-        playerScores: newScores,
-        hasReplayTurn: isReplayCell && !winCheck.winner,
+        pionBag: newBag,
+        playerHands: newPlayerHands,
+        currentPlayer: prevState.currentPlayer === 1 ? 2 : 1,
+        gameStatus: isWin ? 'won' : 'playing',
+        winner: isWin ? prevState.currentPlayer : undefined,
+        winningLine: winningLine,
+        playerScores: newPlayerScores,
+        hasReplayTurn: false,
+        selectedPionsForTurn: [],
       };
     });
-
+    
     return true;
-  }, [gameState, checkWinningLine]);
+  }, [checkWinningLine]);
+
+  const exchangePions = useCallback((pionIndices: number[]): boolean => {
+    setGameState(prevState => {
+      const newBag = { ...prevState.pionBag };
+      const newPlayerHands = { ...prevState.playerHands };
+      const currentHand = [...newPlayerHands[prevState.currentPlayer]];
+      
+      // Return selected pions to bag
+      for (const index of pionIndices.sort().reverse()) {
+        const pion = currentHand[index];
+        const pionKey = pion.toString();
+        newBag[pionKey] = (newBag[pionKey] || 0) + 1;
+        currentHand.splice(index, 1);
+      }
+      
+      // Draw new pions
+      const newPions = drawPionsFromBag(newBag, 3 - currentHand.length);
+      currentHand.push(...newPions);
+      
+      newPlayerHands[prevState.currentPlayer] = currentHand;
+      
+      return {
+        ...prevState,
+        pionBag: newBag,
+        playerHands: newPlayerHands,
+        currentPlayer: prevState.currentPlayer === 1 ? 2 : 1,
+      };
+    });
+    
+    return true;
+  }, []);
+
+  const passTurn = useCallback((): void => {
+    setGameState(prevState => ({
+      ...prevState,
+      currentPlayer: prevState.currentPlayer === 1 ? 2 : 1,
+    }));
+  }, []);
 
   const resetGame = useCallback(() => {
+    const initialBag = { ...INITIAL_PION_BAG };
     setGameState({
-      board: Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)),
+      board: Array(15).fill(null).map(() => Array(15).fill(null)),
       currentPlayer: 1,
-      availablePions: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [i + 1, true])),
+      pionBag: initialBag,
+      playerHands: {
+        1: drawPionsFromBag(initialBag, 3),
+        2: drawPionsFromBag(initialBag, 3),
+      },
       gameStatus: 'playing',
       specialCells: createSpecialCellsLayout(),
       playerScores: { 1: 0, 2: 0 },
       hasReplayTurn: false,
+      selectedPionsForTurn: [],
     });
   }, []);
 
-  return {
-    gameState,
-    placePion,
-    resetGame,
-  };
+  return { gameState, placePions, exchangePions, passTurn, resetGame };
 };

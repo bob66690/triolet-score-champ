@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { getSpecialCellColor, getSpecialCellLabel } from '@/utils/boardLayout';
 
 interface GameBoardProps {
-  board: (number | null)[][];
+  board: (number | string | null)[][];
   specialCells: SpecialCell[][];
   onCellClick?: (position: Position) => void;
   winningLine?: { row: number; col: number }[];

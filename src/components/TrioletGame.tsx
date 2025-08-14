@@ -1,31 +1,67 @@
 import { useState } from 'react';
 import { useTrioletGame } from '@/hooks/useTrioletGame';
 import { GameBoard } from '@/components/GameBoard';
-import { PionSelector } from '@/components/PionSelector';
+import { PlayerHand } from '@/components/PlayerHand';
 import { GameStatus } from '@/components/GameStatus';
 import { Position } from '@/types/game';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export const TrioletGame = () => {
-  const { gameState, placePion, resetGame } = useTrioletGame();
-  const [selectedPion, setSelectedPion] = useState<number | null>(null);
+  const { gameState, placePions, exchangePions, passTurn, resetGame } = useTrioletGame();
+  const [selectedPions, setSelectedPions] = useState<(number | 'X')[]>([]);
+  const [selectedPositions, setSelectedPositions] = useState<Position[]>([]);
 
   const handleCellClick = (position: Position) => {
-    if (selectedPion && gameState.gameStatus === 'playing') {
-      const success = placePion(position, selectedPion);
-      if (success) {
-        setSelectedPion(null);
+    if (selectedPions.length > 0 && gameState.gameStatus === 'playing') {
+      const newPositions = [...selectedPositions, position];
+      setSelectedPositions(newPositions);
+      
+      // If we have the same number of positions as selected pions, place them
+      if (newPositions.length === selectedPions.length) {
+        const success = placePions(newPositions, selectedPions);
+        if (success) {
+          setSelectedPions([]);
+          setSelectedPositions([]);
+        }
       }
     }
   };
 
-  const handlePionSelect = (pion: number) => {
-    setSelectedPion(selectedPion === pion ? null : pion);
+  const handlePionSelect = (pion: number | 'X') => {
+    if (selectedPions.includes(pion)) {
+      setSelectedPions(prev => prev.filter(p => p !== pion));
+    } else if (selectedPions.length < 3) {
+      setSelectedPions(prev => [...prev, pion]);
+    }
+    // Reset positions when changing pion selection
+    setSelectedPositions([]);
+  };
+
+  const handleExchange = (indices: number[]) => {
+    exchangePions(indices);
+  };
+
+  const handlePass = () => {
+    passTurn();
+    setSelectedPions([]);
+    setSelectedPositions([]);
   };
 
   const handleRestart = () => {
     resetGame();
-    setSelectedPion(null);
+    setSelectedPions([]);
+    setSelectedPositions([]);
+  };
+
+  const handlePlacePions = () => {
+    if (selectedPions.length > 0 && selectedPositions.length === selectedPions.length) {
+      const success = placePions(selectedPositions, selectedPions);
+      if (success) {
+        setSelectedPions([]);
+        setSelectedPositions([]);
+      }
+    }
   };
 
   return (
@@ -55,6 +91,60 @@ export const TrioletGame = () => {
 
         {/* Main Game Area */}
         <div className="space-y-8">
+          {/* Player Hands */}
+          {gameState.gameStatus === 'playing' && (
+            <div className="grid md:grid-cols-2 gap-6">
+              <PlayerHand
+                hand={gameState.playerHands[1]}
+                player={1}
+                isCurrentPlayer={gameState.currentPlayer === 1}
+                onPionSelect={handlePionSelect}
+                onExchange={handleExchange}
+                onPass={handlePass}
+                selectedPions={selectedPions}
+                pionBag={gameState.pionBag}
+              />
+              <PlayerHand
+                hand={gameState.playerHands[2]}
+                player={2}
+                isCurrentPlayer={gameState.currentPlayer === 2}
+                onPionSelect={handlePionSelect}
+                onExchange={handleExchange}
+                onPass={handlePass}
+                selectedPions={selectedPions}
+                pionBag={gameState.pionBag}
+              />
+            </div>
+          )}
+
+          {/* Placement Controls */}
+          {gameState.gameStatus === 'playing' && selectedPions.length > 0 && (
+            <Card className="p-4 max-w-md mx-auto">
+              <div className="text-center space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Pions sélectionnés: {selectedPions.join(', ')}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Cliquez sur {selectedPions.length} case{selectedPions.length > 1 ? 's' : ''} du plateau pour placer vos pions
+                </p>
+                {selectedPositions.length === selectedPions.length && (
+                  <Button onClick={handlePlacePions}>
+                    Placer les pions
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedPions([]);
+                    setSelectedPositions([]);
+                  }}
+                >
+                  Annuler
+                </Button>
+              </div>
+            </Card>
+          )}
+
           {/* Game Board */}
           <div className="flex justify-center">
             <GameBoard
@@ -62,21 +152,9 @@ export const TrioletGame = () => {
               specialCells={gameState.specialCells}
               onCellClick={handleCellClick}
               winningLine={gameState.winningLine}
-              isInteractive={gameState.gameStatus === 'playing' && selectedPion !== null}
+              isInteractive={gameState.gameStatus === 'playing' && selectedPions.length > 0}
             />
           </div>
-
-          {/* Pion Selector */}
-          {gameState.gameStatus === 'playing' && (
-            <Card className="p-6 max-w-md mx-auto">
-              <PionSelector
-                availablePions={gameState.availablePions}
-                currentPlayer={gameState.currentPlayer}
-                onPionSelect={handlePionSelect}
-                selectedPion={selectedPion}
-              />
-            </Card>
-          )}
         </div>
 
         {/* Rules */}
