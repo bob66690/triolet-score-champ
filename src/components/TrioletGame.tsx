@@ -92,10 +92,10 @@ export const TrioletGame = () => {
         {/* Main Game Area */}
         <div className="space-y-8">
           {/* Player Hands */}
-          {gameState.gameStatus === 'playing' && (
+          {gameState.gameStatus === 'playing' && gameState.playerHands && (
             <div className="grid md:grid-cols-2 gap-6">
               <PlayerHand
-                hand={gameState.playerHands[1]}
+                hand={gameState.playerHands[1] || []}
                 player={1}
                 isCurrentPlayer={gameState.currentPlayer === 1}
                 onPionSelect={handlePionSelect}
@@ -105,7 +105,7 @@ export const TrioletGame = () => {
                 pionBag={gameState.pionBag}
               />
               <PlayerHand
-                hand={gameState.playerHands[2]}
+                hand={gameState.playerHands[2] || []}
                 player={2}
                 isCurrentPlayer={gameState.currentPlayer === 2}
                 onPionSelect={handlePionSelect}
