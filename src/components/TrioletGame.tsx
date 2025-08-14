@@ -8,60 +8,65 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 export const TrioletGame = () => {
-  const { gameState, placePions, exchangePions, passTurn, resetGame } = useTrioletGame();
-  const [selectedPions, setSelectedPions] = useState<(number | 'X')[]>([]);
-  const [selectedPositions, setSelectedPositions] = useState<Position[]>([]);
+  const { gameState, placePionTemporarily, removePionTemporarily, validateTurn, exchangePions, passTurn, resetGame, isValidPlacement } = useTrioletGame();
+  const [selectedPionIndex, setSelectedPionIndex] = useState<number | null>(null);
+  const [temporaryPlacements, setTemporaryPlacements] = useState<{position: Position, pion: number | 'X', originalIndex: number}[]>([]);
 
   const handleCellClick = (position: Position) => {
-    if (selectedPions.length > 0 && gameState.gameStatus === 'playing') {
-      const newPositions = [...selectedPositions, position];
-      setSelectedPositions(newPositions);
-      
-      // If we have the same number of positions as selected pions, place them
-      if (newPositions.length === selectedPions.length) {
-        const success = placePions(newPositions, selectedPions);
-        if (success) {
-          setSelectedPions([]);
-          setSelectedPositions([]);
+    if (gameState.gameStatus !== 'playing') return;
+
+    // Check if clicking on a temporarily placed pion to remove it
+    const tempPlacement = temporaryPlacements.find(p => p.position.row === position.row && p.position.col === position.col);
+    if (tempPlacement) {
+      removePionTemporarily(position);
+      setTemporaryPlacements(prev => prev.filter(p => p !== tempPlacement));
+      return;
+    }
+
+    // Place a selected pion
+    if (selectedPionIndex !== null && gameState.playerHands?.[gameState.currentPlayer]) {
+      const hand = gameState.playerHands[gameState.currentPlayer];
+      if (selectedPionIndex >= 0 && selectedPionIndex < hand.length) {
+        const pion = hand[selectedPionIndex];
+        if (isValidPlacement(position, temporaryPlacements.map(p => p.position))) {
+          placePionTemporarily(position, pion, selectedPionIndex);
+          setTemporaryPlacements(prev => [...prev, { position, pion, originalIndex: selectedPionIndex }]);
+          setSelectedPionIndex(null);
         }
       }
     }
   };
 
-  const handlePionSelect = (pion: number | 'X') => {
-    if (selectedPions.includes(pion)) {
-      setSelectedPions(prev => prev.filter(p => p !== pion));
-    } else if (selectedPions.length < 3) {
-      setSelectedPions(prev => [...prev, pion]);
-    }
-    // Reset positions when changing pion selection
-    setSelectedPositions([]);
+  const handlePionSelect = (pionIndex: number) => {
+    setSelectedPionIndex(selectedPionIndex === pionIndex ? null : pionIndex);
   };
 
   const handleExchange = (indices: number[]) => {
     exchangePions(indices);
   };
 
+  const handleValidateTurn = () => {
+    if (temporaryPlacements.length > 0) {
+      validateTurn(temporaryPlacements);
+      setTemporaryPlacements([]);
+    }
+    setSelectedPionIndex(null);
+  };
+
   const handlePass = () => {
+    // Clear temporary placements first
+    temporaryPlacements.forEach(placement => {
+      removePionTemporarily(placement.position);
+    });
+    setTemporaryPlacements([]);
     passTurn();
-    setSelectedPions([]);
-    setSelectedPositions([]);
+    setSelectedPionIndex(null);
   };
 
   const handleRestart = () => {
     resetGame();
-    setSelectedPions([]);
-    setSelectedPositions([]);
-  };
-
-  const handlePlacePions = () => {
-    if (selectedPions.length > 0 && selectedPositions.length === selectedPions.length) {
-      const success = placePions(selectedPositions, selectedPions);
-      if (success) {
-        setSelectedPions([]);
-        setSelectedPositions([]);
-      }
-    }
+    setSelectedPionIndex(null);
+    setTemporaryPlacements([]);
   };
 
   return (
@@ -101,7 +106,7 @@ export const TrioletGame = () => {
                 onPionSelect={handlePionSelect}
                 onExchange={handleExchange}
                 onPass={handlePass}
-                selectedPions={selectedPions}
+                selectedPionIndex={selectedPionIndex}
                 pionBag={gameState.pionBag}
               />
               <PlayerHand
@@ -111,36 +116,36 @@ export const TrioletGame = () => {
                 onPionSelect={handlePionSelect}
                 onExchange={handleExchange}
                 onPass={handlePass}
-                selectedPions={selectedPions}
+                selectedPionIndex={selectedPionIndex}
                 pionBag={gameState.pionBag}
               />
             </div>
           )}
 
-          {/* Placement Controls */}
-          {gameState.gameStatus === 'playing' && selectedPions.length > 0 && (
+          {/* Turn Actions */}
+          {gameState.gameStatus === 'playing' && (
             <Card className="p-4 max-w-md mx-auto">
               <div className="text-center space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Pions sélectionnés: {selectedPions.join(', ')}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Cliquez sur {selectedPions.length} case{selectedPions.length > 1 ? 's' : ''} du plateau pour placer vos pions
-                </p>
-                {selectedPositions.length === selectedPions.length && (
-                  <Button onClick={handlePlacePions}>
-                    Placer les pions
-                  </Button>
+                {selectedPionIndex !== null && (
+                  <p className="text-sm text-muted-foreground">
+                    Pion sélectionné: {gameState.playerHands?.[gameState.currentPlayer]?.[selectedPionIndex]}
+                  </p>
                 )}
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedPions([]);
-                    setSelectedPositions([]);
-                  }}
-                >
-                  Annuler
-                </Button>
+                {temporaryPlacements.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Pions placés temporairement: {temporaryPlacements.length}
+                  </p>
+                )}
+                <div className="flex gap-2 justify-center">
+                  {temporaryPlacements.length > 0 && (
+                    <Button onClick={handleValidateTurn} variant="default">
+                      Valider le tour ({temporaryPlacements.length} pion{temporaryPlacements.length > 1 ? 's' : ''})
+                    </Button>
+                  )}
+                  <Button onClick={handlePass} variant="outline">
+                    Passer le tour
+                  </Button>
+                </div>
               </div>
             </Card>
           )}
@@ -152,7 +157,8 @@ export const TrioletGame = () => {
               specialCells={gameState.specialCells}
               onCellClick={handleCellClick}
               winningLine={gameState.winningLine}
-              isInteractive={gameState.gameStatus === 'playing' && selectedPions.length > 0}
+              isInteractive={gameState.gameStatus === 'playing'}
+              temporaryPlacements={temporaryPlacements}
             />
           </div>
         </div>

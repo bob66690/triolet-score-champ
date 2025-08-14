@@ -9,6 +9,7 @@ interface GameBoardProps {
   onCellClick?: (position: Position) => void;
   winningLine?: { row: number; col: number }[];
   isInteractive?: boolean;
+  temporaryPlacements?: {position: Position, pion: number | 'X', originalIndex: number}[];
 }
 
 export const GameBoard = ({ 
@@ -16,7 +17,8 @@ export const GameBoard = ({
   specialCells,
   onCellClick, 
   winningLine = [], 
-  isInteractive = true 
+  isInteractive = true,
+  temporaryPlacements = []
 }: GameBoardProps) => {
   const [hoveredCell, setHoveredCell] = useState<Position | null>(null);
 
@@ -24,8 +26,12 @@ export const GameBoard = ({
     return winningLine?.some(cell => cell.row === row && cell.col === col) || false;
   };
 
+  const getTemporaryPion = (row: number, col: number) => {
+    return temporaryPlacements.find(p => p.position.row === row && p.position.col === col);
+  };
+
   const handleCellClick = (row: number, col: number) => {
-    if (isInteractive && board[row][col] === null && onCellClick) {
+    if (isInteractive && onCellClick) {
       onCellClick({ row, col });
     }
   };
@@ -33,13 +39,15 @@ export const GameBoard = ({
   const getCellClassName = (row: number, col: number) => {
     const baseClasses = "w-8 h-8 border flex items-center justify-center text-xs font-bold transition-all duration-200 cursor-pointer relative";
     const specialColor = getSpecialCellColor(specialCells[row][col].type);
+    const hasTemporaryPion = getTemporaryPion(row, col);
     
     return cn(
       baseClasses,
       specialColor,
       "hover:scale-110 hover:shadow-hover hover:z-10",
       isWinningCell(row, col) && "bg-game-winning-line shadow-lg ring-2 ring-game-winning-line scale-110 z-20",
-      board[row][col] !== null && "shadow-pion",
+      (board[row][col] !== null || hasTemporaryPion) && "shadow-pion",
+      hasTemporaryPion && "ring-2 ring-yellow-400 bg-yellow-100",
       hoveredCell?.row === row && hoveredCell?.col === col && "scale-105 z-10"
     );
   };
@@ -58,19 +66,20 @@ export const GameBoard = ({
                 onMouseLeave={() => setHoveredCell(null)}
                 title={`Case ${rowIndex + 1},${colIndex + 1} - ${specialCells[rowIndex][colIndex].type}`}
               >
-                {/* Pion placé */}
-                {cell && (
+                {/* Pion placé ou temporaire */}
+                {(cell || getTemporaryPion(rowIndex, colIndex)) && (
                   <span className={cn(
                     "text-foreground font-extrabold text-sm z-10 relative",
                     "drop-shadow-sm",
-                    isWinningCell(rowIndex, colIndex) && "text-white animate-pulse"
+                    isWinningCell(rowIndex, colIndex) && "text-white animate-pulse",
+                    getTemporaryPion(rowIndex, colIndex) && "text-yellow-700"
                   )}>
-                    {cell}
+                    {cell || getTemporaryPion(rowIndex, colIndex)?.pion}
                   </span>
                 )}
                 
                 {/* Label de la case spéciale (seulement si pas de pion) */}
-                {!cell && specialCells[rowIndex][colIndex].type !== 'normal' && (
+                {!cell && !getTemporaryPion(rowIndex, colIndex) && specialCells[rowIndex][colIndex].type !== 'normal' && (
                   <span className="text-xs font-semibold opacity-60 absolute inset-0 flex items-center justify-center">
                     {getSpecialCellLabel(specialCells[rowIndex][colIndex].type)}
                   </span>

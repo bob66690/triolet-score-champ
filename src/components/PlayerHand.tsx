@@ -8,10 +8,10 @@ interface PlayerHandProps {
   hand: (number | 'X')[];
   player: Player;
   isCurrentPlayer: boolean;
-  onPionSelect: (pion: number | 'X') => void;
+  onPionSelect: (pionIndex: number) => void;
   onExchange: (indices: number[]) => void;
   onPass: () => void;
-  selectedPions: (number | 'X')[];
+  selectedPionIndex: number | null;
   pionBag: { [key: string]: number };
 }
 
@@ -22,7 +22,7 @@ export const PlayerHand = ({
   onPionSelect,
   onExchange,
   onPass,
-  selectedPions,
+  selectedPionIndex,
   pionBag,
 }: PlayerHandProps) => {
   const [exchangeMode, setExchangeMode] = useState(false);
@@ -38,7 +38,7 @@ export const PlayerHand = ({
           : [...prev, index]
       );
     } else {
-      onPionSelect(pion);
+      onPionSelect(index);
     }
   };
 
@@ -78,7 +78,7 @@ export const PlayerHand = ({
               variant={
                 exchangeMode 
                   ? (selectedForExchange.includes(index) ? "default" : "outline")
-                  : (selectedPions.includes(pion) ? "default" : "outline")
+                  : (selectedPionIndex === index ? "default" : "outline")
               }
               disabled={!isCurrentPlayer}
               onClick={() => handlePionClick(pion, index)}
@@ -86,8 +86,8 @@ export const PlayerHand = ({
                 "w-16 h-16 text-xl font-bold rounded-xl relative",
                 "transition-all duration-200",
                 isCurrentPlayer && "hover:scale-110 hover:shadow-hover",
-                selectedPions.includes(pion) && !exchangeMode && player === 1 && "bg-game-player1 text-white",
-                selectedPions.includes(pion) && !exchangeMode && player === 2 && "bg-game-player2 text-white",
+                selectedPionIndex === index && !exchangeMode && player === 1 && "bg-game-player1 text-white",
+                selectedPionIndex === index && !exchangeMode && player === 2 && "bg-game-player2 text-white",
               )}
             >
               {pion}

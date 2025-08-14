@@ -136,78 +136,121 @@ export const useTrioletGame = () => {
     return null;
   }, [gameState.specialCells]);
 
-  const placePions = useCallback((positions: Position[], pionValues: (number | 'X')[]): boolean => {
-    if (positions.length !== pionValues.length) return false;
-    
-    setGameState(prevState => {
-      if (prevState.gameStatus !== 'playing') return prevState;
-      
-      // Validate all positions are empty and pions are available in hand
-      for (let i = 0; i < positions.length; i++) {
-        const { row, col } = positions[i];
-        if (prevState.board[row][col] !== null) return prevState;
-        if (!prevState.playerHands[prevState.currentPlayer].includes(pionValues[i])) return prevState;
+  const placePionTemporarily = useCallback((position: Position, pion: number | 'X', originalIndex: number) => {
+    setGameState(prev => ({
+      ...prev,
+      board: prev.board.map((row, rowIndex) =>
+        row.map((cell, colIndex) =>
+          rowIndex === position.row && colIndex === position.col ? pion : cell
+        )
+      ),
+      playerHands: {
+        ...prev.playerHands,
+        [prev.currentPlayer]: prev.playerHands[prev.currentPlayer].filter((_, index) => index !== originalIndex)
       }
-      
-      const newBoard = prevState.board.map(r => [...r]);
-      let totalEffectiveValue = 0;
-      
-      // Place all pions and calculate total value
-      for (let i = 0; i < positions.length; i++) {
-        const { row, col } = positions[i];
-        const pionValue = pionValues[i];
-        let effectiveValue = pionValue === 'X' ? 0 : pionValue; // Joker logic to be handled separately
-        
-        // Apply special cell multipliers
-        const specialCell = prevState.specialCells[row][col];
-        if (specialCell.type === 'double') {
-          effectiveValue = effectiveValue * 2;
-        } else if (specialCell.type === 'triple') {
-          effectiveValue = effectiveValue * 3;
+    }));
+  }, []);
+
+  const removePionTemporarily = useCallback((position: Position) => {
+    const pion = gameState.board[position.row][position.col];
+    if (pion) {
+      setGameState(prev => ({
+        ...prev,
+        board: prev.board.map((row, rowIndex) =>
+          row.map((cell, colIndex) =>
+            rowIndex === position.row && colIndex === position.col ? null : cell
+          )
+        ),
+        playerHands: {
+          ...prev.playerHands,
+          [prev.currentPlayer]: [...prev.playerHands[prev.currentPlayer], pion]
         }
-        
-        newBoard[row][col] = effectiveValue;
-        totalEffectiveValue += effectiveValue;
+      }));
+    }
+  }, [gameState.board]);
+
+  const isValidPlacement = useCallback((position: Position, temporaryPositions: Position[] = []) => {
+    // Check if cell is empty
+    if (gameState.board[position.row][position.col] !== null) {
+      return false;
+    }
+
+    // Check if this is the first turn (no pions on board and no temporary placements)
+    const hasPionsOnBoard = gameState.board.some(row => row.some(cell => cell !== null));
+    if (!hasPionsOnBoard && temporaryPositions.length === 0) {
+      return true; // First pion can be placed anywhere
+    }
+
+    // Check adjacency to existing pions or temporary placements
+    const adjacentPositions = [
+      { row: position.row - 1, col: position.col },
+      { row: position.row + 1, col: position.col },
+      { row: position.row, col: position.col - 1 },
+      { row: position.row, col: position.col + 1 }
+    ];
+
+    return adjacentPositions.some(adjPos => {
+      if (adjPos.row < 0 || adjPos.row >= BOARD_SIZE || adjPos.col < 0 || adjPos.col >= BOARD_SIZE) {
+        return false;
       }
-      
-      const winningLine = checkWinningLine(newBoard);
-      const isWin = winningLine !== null;
-      
-      // Remove used pions from player hand
-      const newPlayerHands = { ...prevState.playerHands };
-      for (const pionValue of pionValues) {
-        const index = newPlayerHands[prevState.currentPlayer].indexOf(pionValue);
-        if (index > -1) {
-          newPlayerHands[prevState.currentPlayer].splice(index, 1);
-        }
+      // Check if adjacent to existing pion
+      if (gameState.board[adjPos.row][adjPos.col] !== null) {
+        return true;
       }
-      
-      // Draw new pions to refill hand to 3
-      const newBag = { ...prevState.pionBag };
-      const newPions = drawPionsFromBag(newBag, 3 - newPlayerHands[prevState.currentPlayer].length);
-      newPlayerHands[prevState.currentPlayer].push(...newPions);
-      
-      // Update scores
-      const newPlayerScores = { ...prevState.playerScores };
-      newPlayerScores[prevState.currentPlayer] += totalEffectiveValue;
-      
-      return {
-        ...prevState,
-        board: newBoard,
-        pionBag: newBag,
-        playerHands: newPlayerHands,
-        currentPlayer: prevState.currentPlayer === 1 ? 2 : 1,
-        gameStatus: isWin ? 'won' : 'playing',
-        winner: isWin ? prevState.currentPlayer : undefined,
-        winningLine: winningLine,
-        playerScores: newPlayerScores,
-        hasReplayTurn: false,
-        selectedPionsForTurn: [],
-      };
+      // Check if adjacent to temporary placement
+      return temporaryPositions.some(tempPos => 
+        tempPos.row === adjPos.row && tempPos.col === adjPos.col
+      );
     });
+  }, [gameState.board]);
+
+  const validateTurn = useCallback((temporaryPlacements: {position: Position, pion: number | 'X', originalIndex: number}[]) => {
+    // Calculate scores
+    let totalScore = 0;
+    for (const placement of temporaryPlacements) {
+      const specialCell = gameState.specialCells[placement.position.row][placement.position.col];
+      let pionValue = placement.pion === 'X' ? 0 : Number(placement.pion);
+      if (specialCell.multiplier) {
+        pionValue *= specialCell.multiplier;
+      }
+      totalScore += pionValue;
+    }
+
+    // Check for winning condition
+    const winningLineResult = checkWinningLine(gameState.board);
+    const hasWon = winningLineResult !== null;
     
-    return true;
-  }, [checkWinningLine]);
+    // Draw new pions to refill hand to 3
+    const newPionBag = { ...gameState.pionBag };
+    const currentHand = gameState.playerHands[gameState.currentPlayer];
+    const pionsNeeded = 3 - currentHand.length;
+    const drawnPions = drawPionsFromBag(newPionBag, pionsNeeded);
+    const finalHand = [...currentHand, ...drawnPions];
+
+    // Check for replay turn
+    let hasReplayTurn = false;
+    if (temporaryPlacements.some(p => gameState.specialCells[p.position.row][p.position.col].type === 'replay')) {
+      hasReplayTurn = true;
+    }
+
+    setGameState(prev => ({
+      ...prev,
+      playerHands: {
+        ...prev.playerHands,
+        [gameState.currentPlayer]: finalHand
+      },
+      pionBag: newPionBag,
+      playerScores: {
+        ...prev.playerScores,
+        [gameState.currentPlayer]: prev.playerScores[gameState.currentPlayer] + totalScore
+      },
+      currentPlayer: hasWon || hasReplayTurn ? gameState.currentPlayer : (gameState.currentPlayer === 1 ? 2 : 1),
+      gameStatus: hasWon ? 'won' : 'playing',
+      winner: hasWon ? gameState.currentPlayer : undefined,
+      winningLine: winningLineResult,
+      hasReplayTurn
+    }));
+  }, [gameState, checkWinningLine]);
 
   const exchangePions = useCallback((pionIndices: number[]): boolean => {
     setGameState(prevState => {
@@ -265,5 +308,14 @@ export const useTrioletGame = () => {
     });
   }, []);
 
-  return { gameState, placePions, exchangePions, passTurn, resetGame };
+  return { 
+    gameState, 
+    placePionTemporarily, 
+    removePionTemporarily, 
+    validateTurn, 
+    isValidPlacement,
+    exchangePions, 
+    passTurn, 
+    resetGame 
+  };
 };
