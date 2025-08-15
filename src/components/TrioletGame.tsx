@@ -3,14 +3,16 @@ import { useTrioletGame } from '@/hooks/useTrioletGame';
 import { GameBoard } from '@/components/GameBoard';
 import { PlayerHand } from '@/components/PlayerHand';
 import { GameStatus } from '@/components/GameStatus';
+import { JokerDialog } from '@/components/JokerDialog';
 import { Position } from '@/types/game';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 export const TrioletGame = () => {
-  const { gameState, placePionTemporarily, removePionTemporarily, validateTurn, exchangePions, passTurn, resetGame, isValidPlacement } = useTrioletGame();
+  const { gameState, placePionTemporarily, removePionTemporarily, validateTurn, exchangePions, passTurn, resetGame, isValidPlacement, assignJokerValue } = useTrioletGame();
   const [selectedPionIndex, setSelectedPionIndex] = useState<number | null>(null);
   const [temporaryPlacements, setTemporaryPlacements] = useState<{position: Position, pion: number | 'X', originalIndex: number}[]>([]);
+  const [jokerDialog, setJokerDialog] = useState<{ isOpen: boolean; position: Position | null }>({ isOpen: false, position: null });
 
   const handleCellClick = (position: Position) => {
     if (gameState.gameStatus !== 'playing') return;
@@ -29,12 +31,30 @@ export const TrioletGame = () => {
       if (selectedPionIndex >= 0 && selectedPionIndex < hand.length) {
         const pion = hand[selectedPionIndex];
         if (isValidPlacement(position, temporaryPlacements.map(p => p.position))) {
+          // If it's a joker, open dialog to choose value
+          if (pion === 'X' && gameState.jokersPlayedThisTurn === 0) {
+            setJokerDialog({ isOpen: true, position });
+            return;
+          }
           placePionTemporarily(position, pion, selectedPionIndex);
           setTemporaryPlacements(prev => [...prev, { position, pion, originalIndex: selectedPionIndex }]);
           setSelectedPionIndex(null);
         }
       }
     }
+  };
+
+  const handleJokerValueSelect = (value: number) => {
+    if (jokerDialog.position && selectedPionIndex !== null) {
+      const hand = gameState.playerHands[gameState.currentPlayer];
+      const pion = hand[selectedPionIndex];
+      
+      placePionTemporarily(jokerDialog.position, pion, selectedPionIndex);
+      assignJokerValue(jokerDialog.position, value);
+      setTemporaryPlacements(prev => [...prev, { position: jokerDialog.position!, pion, originalIndex: selectedPionIndex }]);
+      setSelectedPionIndex(null);
+    }
+    setJokerDialog({ isOpen: false, position: null });
   };
 
   const handlePionSelect = (pionIndex: number) => {
@@ -181,6 +201,12 @@ export const TrioletGame = () => {
             </div>
           </div>
         </Card>
+
+        <JokerDialog
+          isOpen={jokerDialog.isOpen}
+          onClose={() => setJokerDialog({ isOpen: false, position: null })}
+          onValueSelect={handleJokerValueSelect}
+        />
       </div>
     </div>
   );

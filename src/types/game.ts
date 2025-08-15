@@ -7,6 +7,12 @@ export type SpecialCellType = 'normal' | 'double' | 'triple' | 'replay' | 'doubl
 export interface SpecialCell {
   type: SpecialCellType;
   multiplier?: number;
+  used?: boolean; // Marque si la case spéciale a déjà été utilisée
+}
+
+export interface AssignedJoker {
+  position: Position;
+  assignedValue: number; // Valeur choisie pour le joker (0-15)
 }
 
 export interface PionType {
@@ -30,6 +36,8 @@ export interface GameState {
   playerScores: { [key in Player]: number };
   hasReplayTurn: boolean;
   selectedPionsForTurn: (number | 'X')[]; // pions selected for current placement
+  assignedJokers: AssignedJoker[]; // Jokers avec leurs valeurs assignées
+  jokersPlayedThisTurn: number; // Nombre de jokers joués ce tour
 }
 
 export type PlayerAction = 'place' | 'pass' | 'exchange';

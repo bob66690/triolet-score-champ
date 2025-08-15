@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
-import { GameState, Player, Position, SpecialCellType, PlayerAction } from '@/types/game';
+import { GameState, Player, Position, SpecialCellType, PlayerAction, AssignedJoker } from '@/types/game';
 import { createSpecialCellsLayout } from '@/utils/boardLayout';
+import { calculateTurnScore } from '@/utils/scoring';
+import { validateJokerPlacement, isTriolet, checkEndGameConditions } from '@/utils/gameValidation';
 
 // Initial pion bag configuration
 const INITIAL_PION_BAG = {
@@ -110,6 +112,8 @@ export const useTrioletGame = () => {
       playerScores: { 1: 0, 2: 0 },
       hasReplayTurn: false,
       selectedPionsForTurn: [],
+      assignedJokers: [],
+      jokersPlayedThisTurn: 0,
     };
   });
 
@@ -305,7 +309,16 @@ export const useTrioletGame = () => {
       playerScores: { 1: 0, 2: 0 },
       hasReplayTurn: false,
       selectedPionsForTurn: [],
+      assignedJokers: [],
+      jokersPlayedThisTurn: 0,
     });
+  }, []);
+
+  const assignJokerValue = useCallback((position: Position, value: number) => {
+    setGameState(prev => ({
+      ...prev,
+      assignedJokers: [...prev.assignedJokers, { position, assignedValue: value }]
+    }));
   }, []);
 
   return { 
@@ -316,6 +329,7 @@ export const useTrioletGame = () => {
     isValidPlacement,
     exchangePions, 
     passTurn, 
-    resetGame 
+    resetGame,
+    assignJokerValue
   };
 };
