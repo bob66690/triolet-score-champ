@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { GameState, Player, Position, SpecialCellType, PlayerAction, AssignedJoker } from '@/types/game';
 import { createSpecialCellsLayout } from '@/utils/boardLayout';
-import { calculateTurnScore } from '@/utils/scoring';
+import { calculateTurnScore, calculateFinalScore } from '@/utils/scoring';
 import { validateJokerPlacement, isTriolet, checkEndGameConditions } from '@/utils/gameValidation';
 
 // Initial pion bag configuration
@@ -117,28 +117,7 @@ export const useTrioletGame = () => {
     };
   });
 
-  const checkWinningLine = useCallback((board: (number | string | null)[][]) => {
-    for (const combination of WINNING_COMBINATIONS) {
-      const values = combination.map(([row, col]) => board[row][col]);
-      if (values.every(val => val !== null) && values.length >= 3) {
-        // Calculer la somme avec les multiplicateurs
-        let sum = 0;
-        for (let i = 0; i < combination.length; i++) {
-          const [row, col] = combination[i];
-          const value = values[i]!;
-          // Convert value to number for calculation (handle jokers separately)
-          const numValue = typeof value === 'string' ? 0 : value;
-          const multiplier = gameState.specialCells[row][col].multiplier || 1;
-          sum += numValue * multiplier;
-        }
-        
-        if (sum === 15) {
-          return combination.map(([row, col]) => ({ row, col }));
-        }
-      }
-    }
-    return null;
-  }, [gameState.specialCells]);
+  // Plus de vérification de ligne gagnante - la victoire se détermine uniquement par les conditions de fin de partie
 
   const placePionTemporarily = useCallback((position: Position, pion: number | 'X', originalIndex: number) => {
     setGameState(prev => ({
@@ -209,52 +188,93 @@ export const useTrioletGame = () => {
   }, [gameState.board]);
 
   const validateTurn = useCallback((temporaryPlacements: {position: Position, pion: number | 'X', originalIndex: number}[]) => {
-    // Calculate scores
-    let totalScore = 0;
-    for (const placement of temporaryPlacements) {
-      const specialCell = gameState.specialCells[placement.position.row][placement.position.col];
-      let pionValue = placement.pion === 'X' ? 0 : Number(placement.pion);
-      if (specialCell.multiplier) {
-        pionValue *= specialCell.multiplier;
+    if (temporaryPlacements.length === 0) return;
+
+    setGameState(prevState => {
+      const newState = { ...prevState };
+      const newBoard = [...newState.board];
+
+      // Vérifier les jokers
+      if (!validateJokerPlacement(temporaryPlacements, newState.assignedJokers)) {
+        return prevState; // Invalid joker placement
       }
-      totalScore += pionValue;
-    }
 
-    // Check for winning condition
-    const winningLineResult = checkWinningLine(gameState.board);
-    const hasWon = winningLineResult !== null;
-    
-    // Draw new pions to refill hand to 3
-    const newPionBag = { ...gameState.pionBag };
-    const currentHand = gameState.playerHands[gameState.currentPlayer];
-    const pionsNeeded = 3 - currentHand.length;
-    const drawnPions = drawPionsFromBag(newPionBag, pionsNeeded);
-    const finalHand = [...currentHand, ...drawnPions];
+      // Vérifier si c'est un Triolet (les 3 jetons du chevalet forment 15)
+      const isTrioletTurn = temporaryPlacements.length === 3 && 
+                           isTriolet(newState.playerHands[newState.currentPlayer]);
 
-    // Check for replay turn
-    let hasReplayTurn = false;
-    if (temporaryPlacements.some(p => gameState.specialCells[p.position.row][p.position.col].type === 'replay')) {
-      hasReplayTurn = true;
-    }
+      // Calculer le score du tour
+      const scoringResult = calculateTurnScore(newState, temporaryPlacements, isTrioletTurn);
+      newState.playerScores[newState.currentPlayer] += scoringResult.totalScore;
 
-    setGameState(prev => ({
-      ...prev,
-      playerHands: {
-        ...prev.playerHands,
-        [gameState.currentPlayer]: finalHand
-      },
-      pionBag: newPionBag,
-      playerScores: {
-        ...prev.playerScores,
-        [gameState.currentPlayer]: prev.playerScores[gameState.currentPlayer] + totalScore
-      },
-      currentPlayer: hasWon || hasReplayTurn ? gameState.currentPlayer : (gameState.currentPlayer === 1 ? 2 : 1),
-      gameStatus: hasWon ? 'won' : 'playing',
-      winner: hasWon ? gameState.currentPlayer : undefined,
-      winningLine: winningLineResult,
-      hasReplayTurn
-    }));
-  }, [gameState, checkWinningLine]);
+      // Marquer les cases spéciales comme utilisées
+      temporaryPlacements.forEach(placement => {
+        const specialCell = newState.specialCells[placement.position.row][placement.position.col];
+        if (specialCell.multiplier && specialCell.multiplier > 1) {
+          specialCell.used = true;
+        }
+      });
+
+      // Vérifier les cases rejoueur
+      const hasReplayCell = temporaryPlacements.some(placement => 
+        newState.specialCells[placement.position.row][placement.position.col].type === 'replay'
+      );
+
+      // Piocher de nouveaux jetons pour compléter la main
+      const currentHand = newState.playerHands[newState.currentPlayer];
+      const pionsNeeded = 3 - currentHand.length;
+      const drawnPions = drawPionsFromBag(newState.pionBag, pionsNeeded);
+      newState.playerHands[newState.currentPlayer] = [...currentHand, ...drawnPions];
+
+      // Vérifier les conditions de fin de partie
+      const endCondition = checkEndGameConditions(
+        newState.pionBag,
+        newState.playerHands,
+        newBoard,
+        gameState.currentPlayer
+      );
+      
+      if (endCondition.isGameOver) {
+        newState.gameStatus = endCondition.winner ? 'won' : 'draw';
+        if (endCondition.winner) {
+          newState.winner = endCondition.winner as Player;
+          // Calculer le score final pour le gagnant
+          const opponentHands = Object.entries(newState.playerHands)
+            .filter(([player]) => parseInt(player) !== endCondition.winner)
+            .map(([_, hand]) => hand);
+          newState.playerScores[endCondition.winner] = calculateFinalScore(
+            newState.playerScores[endCondition.winner],
+            newState.playerHands[endCondition.winner],
+            opponentHands,
+            true
+          );
+          // Calculer le score final pour les perdants
+          Object.keys(newState.playerHands).forEach(playerKey => {
+            const player = parseInt(playerKey) as Player;
+            if (player !== endCondition.winner) {
+              newState.playerScores[player] = calculateFinalScore(
+                newState.playerScores[player],
+                newState.playerHands[player],
+                [],
+                false
+              );
+            }
+          });
+        }
+      } else {
+        // Changer de joueur sauf si rejoueur ou fin de partie
+        if (!hasReplayCell) {
+          newState.currentPlayer = newState.currentPlayer === 1 ? 2 : 1;
+        }
+        newState.hasReplayTurn = hasReplayCell;
+      }
+
+      // Réinitialiser les jokers joués ce tour
+      newState.jokersPlayedThisTurn = 0;
+
+      return newState;
+    });
+  }, [gameState]);
 
   const exchangePions = useCallback((pionIndices: number[]): boolean => {
     setGameState(prevState => {

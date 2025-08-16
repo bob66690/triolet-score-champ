@@ -176,7 +176,7 @@ export const TrioletGame = () => {
               board={gameState.board}
               specialCells={gameState.specialCells}
               onCellClick={handleCellClick}
-              winningLine={gameState.winningLine}
+              winningLine={undefined}
               isInteractive={gameState.gameStatus === 'playing'}
               temporaryPlacements={temporaryPlacements}
             />
