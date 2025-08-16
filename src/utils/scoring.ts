@@ -220,10 +220,10 @@ export const calculateFinalScore = (
 
   if (isWinner) {
     // Le gagnant ajoute la valeur des jetons des adversaires
-    const values = opponentHands.flat().reduce((sum, pion) => sum + (pion === 'X' ? 0 : (pion as number)), 0);
+    const values = opponentHands.flat().reduce<number>((sum, pion) => sum + (typeof pion === 'number' ? pion : 0), 0);
     finalScore = finalScore + values;
   } else {
-    const values = playerHand.reduce((sum, pion) => sum + (pion === 'X' ? 0 : (pion as number)), 0);
+    const values = playerHand.reduce<number>((sum, pion) => sum + (typeof pion === 'number' ? pion : 0), 0);
     finalScore = finalScore - values;
   }
 

@@ -16,7 +16,7 @@ export const isTriolet = (hand: (number | 'X')[]): boolean => {
   // Si il y a un joker, on ne peut pas faire de Triolet avec bonus
   if (hand.includes('X')) return false;
   
-  const sum = hand.reduce((total, pion) => total + (pion === 'X' ? 0 : (pion as number)), 0);
+  const sum = hand.reduce<number>((total, pion) => total + (typeof pion === 'number' ? pion : 0), 0);
   return sum === 15;
 };
 
