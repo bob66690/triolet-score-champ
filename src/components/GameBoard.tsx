@@ -67,7 +67,7 @@ export const GameBoard = ({
                 title={`Case ${rowIndex + 1},${colIndex + 1} - ${specialCells[rowIndex][colIndex].type}`}
               >
                 {/* Pion placé ou temporaire */}
-                {(cell || getTemporaryPion(rowIndex, colIndex)) && (
+                {(cell !== null || getTemporaryPion(rowIndex, colIndex)) && (
                   <span className={cn(
                     "text-foreground font-extrabold text-sm z-10 relative",
                     "drop-shadow-sm",

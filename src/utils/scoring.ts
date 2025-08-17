@@ -170,12 +170,7 @@ const calculateEnsembleScore = (
 
   // Si c'est un trio (3 jetons = 15 points base), ajouter le bonus de 15 points
   if (ensemble.length === 3 && getTotalValue(ensemble, assignedJokers, board) === 15) {
-    baseScore = 30; // 15 + 15 bonus
-    
-    // Si il y a une case spéciale dans le trio, multiplier tout le trio
-    if (hasSpecialMultiplier) {
-      baseScore = 30 * maxMultiplier;
-    }
+    baseScore += 15; // Ajouter le bonus de 15 points au score des pions
   }
 
   return { score: baseScore };
