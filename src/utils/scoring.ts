@@ -42,21 +42,23 @@ export const calculateTurnScore = (
         score: ensembleScore.score,
         isTriolet: isTriolet && ensemble.length === 3
       });
-      
-      // Ajouter le bonus Triolet si applicable
-      if (isTriolet && !hasJokerInEnsemble(ensemble, assignedJokers)) {
-        result.details.specialBonuses.push({
-          type: 'Bonus Triolet',
-          score: 50
-        });
-      }
     }
 
     result.totalScore += ensembleScore.score;
   }
 
-  // Ajouter les bonus spéciaux
-  result.totalScore += result.details.specialBonuses.reduce((sum, bonus) => sum + bonus.score, 0);
+  // Ajouter le bonus Triolet si c'est un Triolet (3 pions placés d'un coup qui font 15)
+  if (isTriolet && newPlacements.length === 3) {
+    // Vérifier qu'il n'y a pas de joker dans les nouveaux placements
+    const hasJoker = newPlacements.some(p => p.pion === 'X');
+    if (!hasJoker) {
+      result.details.specialBonuses.push({
+        type: 'Bonus Triolet',
+        score: 50
+      });
+      result.totalScore += 50;
+    }
+  }
 
   return result;
 };
