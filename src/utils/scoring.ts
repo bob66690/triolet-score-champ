@@ -29,6 +29,18 @@ export const calculateTurnScore = (
   const ensembles = findEnsemblesWithNewPlacements(board, newPlacements);
 
   for (const ensemble of ensembles) {
+    const totalValue = getTotalValue(ensemble, assignedJokers, board);
+    
+    // Validation des règles : pour 3 pions, total doit être exactement 15
+    if (ensemble.length === 3 && totalValue !== 15) {
+      continue; // Ignorer cet ensemble s'il ne fait pas exactement 15
+    }
+    
+    // Validation : aucun ensemble de 3 ne peut dépasser 15
+    if (ensemble.length === 3 && totalValue > 15) {
+      continue; // Ne devrait pas arriver avec la règle ci-dessus, mais sécurité
+    }
+    
     const ensembleScore = calculateEnsembleScore(ensemble, specialCells, assignedJokers, board, isTriolet);
     
     if (ensemble.length === 2) {
@@ -77,12 +89,10 @@ const findEnsemblesWithNewPlacements = (
     
     if (processedPositions.has(posKey)) continue;
 
-    // Vérifier les 4 directions
+    // Vérifier seulement 2 directions : horizontal et vertical (pas de diagonales)
     const directions = [
       { dr: 0, dc: 1 },  // horizontal
-      { dr: 1, dc: 0 },  // vertical
-      { dr: 1, dc: 1 },  // diagonal descendante
-      { dr: 1, dc: -1 }  // diagonal montante
+      { dr: 1, dc: 0 }   // vertical
     ];
 
     for (const { dr, dc } of directions) {
