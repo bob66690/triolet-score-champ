@@ -156,15 +156,16 @@ const calculateEnsembleScore = (
     }
     
     // Appliquer les multiplicateurs des cases spéciales (si pas encore utilisées)
+    let finalPionValue = pionValue;
     if (cell.multiplier && cell.multiplier > 1 && !cell.used) {
-      pionValue *= cell.multiplier;
+      finalPionValue *= cell.multiplier;
       hasSpecialMultiplier = true;
       maxMultiplier = Math.max(maxMultiplier, cell.multiplier);
     }
     
-    // Pour les jokers, ne pas ajouter de points au score
+    // Pour les jokers, ne pas ajouter de points au score de base
     if (!joker) {
-      baseScore += pionValue;
+      baseScore += finalPionValue;
     }
   }
 

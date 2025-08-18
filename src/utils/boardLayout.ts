@@ -47,7 +47,9 @@ export const createSpecialCellsLayout = (): SpecialCell[][] => {
       
       layout[row][col] = {
         type: specialType,
-        multiplier: specialType === 'double' ? 2 : specialType === 'triple' ? 3 : 1,
+        multiplier: specialType === 'double' ? 2 : 
+                   specialType === 'doubledebut' ? 2 : 
+                   specialType === 'triple' ? 3 : 1,
       };
     }
   }
