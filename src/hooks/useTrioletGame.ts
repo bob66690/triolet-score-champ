@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { GameState, Player, Position, SpecialCellType, PlayerAction, AssignedJoker } from '@/types/game';
 import { createSpecialCellsLayout } from '@/utils/boardLayout';
 import { calculateTurnScore, calculateFinalScore } from '@/utils/scoring';
-import { validateJokerPlacement, isTriolet, checkEndGameConditions } from '@/utils/gameValidation';
+import { validateJokerPlacement, isTriolet, checkEndGameConditions, validateNewPlacements } from '@/utils/gameValidation';
 
 // Initial pion bag configuration
 const INITIAL_PION_BAG = {
@@ -188,8 +188,9 @@ export const useTrioletGame = () => {
   }, [gameState.board]);
 
   const validateTurn = useCallback((temporaryPlacements: {position: Position, pion: number | 'X', originalIndex: number}[]) => {
-    if (temporaryPlacements.length === 0) return;
+    if (temporaryPlacements.length === 0) return false;
 
+    let isValid = false;
     setGameState(prevState => {
       const newState = { ...prevState };
       const newBoard = [...newState.board];
@@ -197,6 +198,19 @@ export const useTrioletGame = () => {
       // Vérifier les jokers
       if (!validateJokerPlacement(temporaryPlacements, newState.assignedJokers)) {
         return prevState; // Invalid joker placement
+      }
+
+      // Placer temporairement les nouveaux pions pour la validation
+      temporaryPlacements.forEach(placement => {
+        newBoard[placement.position.row] = [...newBoard[placement.position.row]];
+        newBoard[placement.position.row][placement.position.col] = placement.pion;
+      });
+
+      // Valider que tous les ensembles de 3 pions font exactement 15
+      const validation = validateNewPlacements(newBoard, temporaryPlacements, newState.assignedJokers);
+      if (!validation.isValid) {
+        isValid = false;
+        return prevState; // Invalide, ne pas changer l'état
       }
 
       // Vérifier si c'est un Triolet (les 3 jetons du chevalet forment 15)
@@ -272,8 +286,11 @@ export const useTrioletGame = () => {
       // Réinitialiser les jokers joués ce tour
       newState.jokersPlayedThisTurn = 0;
 
+      isValid = true;
       return newState;
     });
+    
+    return isValid;
   }, [gameState]);
 
   const exchangePions = useCallback((pionIndices: number[]): boolean => {

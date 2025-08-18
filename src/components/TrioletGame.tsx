@@ -7,9 +7,11 @@ import { JokerDialog } from '@/components/JokerDialog';
 import { Position } from '@/types/game';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 export const TrioletGame = () => {
   const { gameState, placePionTemporarily, removePionTemporarily, validateTurn, exchangePions, passTurn, resetGame, isValidPlacement, assignJokerValue } = useTrioletGame();
+  const { toast } = useToast();
   const [selectedPionIndex, setSelectedPionIndex] = useState<number | null>(null);
   const [temporaryPlacements, setTemporaryPlacements] = useState<{position: Position, pion: number | 'X', originalIndex: number}[]>([]);
   const [jokerDialog, setJokerDialog] = useState<{ isOpen: boolean; position: Position | null }>({ isOpen: false, position: null });
@@ -67,8 +69,16 @@ export const TrioletGame = () => {
 
   const handleValidateTurn = () => {
     if (temporaryPlacements.length > 0) {
-      validateTurn(temporaryPlacements);
-      setTemporaryPlacements([]);
+      const isValid = validateTurn(temporaryPlacements);
+      if (isValid) {
+        setTemporaryPlacements([]);
+      } else {
+        toast({
+          title: "Placement invalide",
+          description: "Tous les ensembles de 3 pions doivent faire exactement 15 points. Reprenez vos pions et recommencez.",
+          variant: "destructive",
+        });
+      }
     }
     setSelectedPionIndex(null);
   };

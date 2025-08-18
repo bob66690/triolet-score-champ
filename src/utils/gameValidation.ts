@@ -38,6 +38,121 @@ export const isValidTrio = (
   return sum === 15;
 };
 
+// Valide que tous les nouveaux placements respectent les règles de somme
+export const validateNewPlacements = (
+  board: (number | string | null)[][],
+  newPlacements: { position: Position; pion: number | 'X' }[],
+  assignedJokers: AssignedJoker[]
+): { isValid: boolean; invalidEnsembles: Position[][] } => {
+  const invalidEnsembles: Position[][] = [];
+  
+  // Trouver tous les ensembles qui incluent au moins un nouveau placement
+  const ensembles = findEnsemblesWithNewPlacements(board, newPlacements);
+  
+  for (const ensemble of ensembles) {
+    if (ensemble.length === 3) {
+      const totalValue = getTotalValueForEnsemble(ensemble, assignedJokers, board);
+      // Pour 3 pions, la somme doit être exactement 15
+      if (totalValue !== 15) {
+        invalidEnsembles.push(ensemble);
+      }
+    }
+  }
+  
+  return {
+    isValid: invalidEnsembles.length === 0,
+    invalidEnsembles
+  };
+};
+
+// Trouve tous les ensembles (lignes continues) qui incluent au moins un nouveau placement
+const findEnsemblesWithNewPlacements = (
+  board: (number | string | null)[][],
+  newPlacements: { position: Position }[]
+): Position[][] => {
+  const ensembles: Position[][] = [];
+  const processedPositions = new Set<string>();
+
+  for (const placement of newPlacements) {
+    const { row, col } = placement.position;
+    const posKey = `${row},${col}`;
+    
+    if (processedPositions.has(posKey)) continue;
+
+    // Vérifier seulement 2 directions : horizontal et vertical (pas de diagonales)
+    const directions = [
+      { dr: 0, dc: 1 },  // horizontal
+      { dr: 1, dc: 0 }   // vertical
+    ];
+
+    for (const { dr, dc } of directions) {
+      const ligne = findLineFromPosition(board, row, col, dr, dc);
+      
+      if (ligne.length >= 2) {
+        // Vérifier si cette ligne contient au moins un nouveau placement
+        const hasNewPlacement = ligne.some(pos => 
+          newPlacements.some(p => p.position.row === pos.row && p.position.col === pos.col)
+        );
+        
+        if (hasNewPlacement) {
+          ensembles.push(ligne);
+          ligne.forEach(pos => processedPositions.add(`${pos.row},${pos.col}`));
+        }
+      }
+    }
+  }
+
+  return ensembles;
+};
+
+// Trouve une ligne continue de jetons dans une direction donnée
+const findLineFromPosition = (
+  board: (number | string | null)[][],
+  startRow: number,
+  startCol: number,
+  dr: number,
+  dc: number
+): Position[] => {
+  const ligne: Position[] = [];
+  
+  // Aller vers l'arrière pour trouver le début
+  let r = startRow, c = startCol;
+  while (r >= 0 && r < board.length && c >= 0 && c < board[0].length && board[r][c] !== null) {
+    r -= dr;
+    c -= dc;
+  }
+  r += dr;
+  c += dc;
+
+  // Construire la ligne vers l'avant
+  while (r >= 0 && r < board.length && c >= 0 && c < board[0].length && board[r][c] !== null) {
+    ligne.push({ row: r, col: c });
+    r += dr;
+    c += dc;
+  }
+
+  return ligne;
+};
+
+// Calcule la valeur totale d'un ensemble
+const getTotalValueForEnsemble = (
+  ensemble: Position[],
+  assignedJokers: AssignedJoker[],
+  board: (number | string | null)[][]
+): number => {
+  let total = 0;
+  for (const pos of ensemble) {
+    const joker = assignedJokers.find(j => j.position.row === pos.row && j.position.col === pos.col);
+    if (joker) {
+      total += joker.assignedValue;
+    } else {
+      const boardValue = board[pos.row][pos.col];
+      total += typeof boardValue === 'string' || boardValue === null ? 0 : boardValue;
+    }
+  }
+  return total;
+};
+
 // Vérifie les conditions de fin de partie
 export interface EndGameCondition {
   isGameOver: boolean;
