@@ -144,34 +144,35 @@ const calculateEnsembleScore = (
   let hasSpecialMultiplier = false;
   let maxMultiplier = 1;
 
+  // Calculer le score de base (somme des valeurs des pions, sans les jokers)
   for (const pos of ensemble) {
-    const cell = specialCells[pos.row][pos.col];
     const joker = assignedJokers.find(j => j.position.row === pos.row && j.position.col === pos.col);
     
-    // Les jokers n'ajoutent pas de points mais gardent leur valeur assignée pour les calculs
-    let pionValue = joker ? joker.assignedValue : 0;
+    // Les jokers n'ajoutent pas de points au score de base
     if (!joker) {
       const boardValue = board[pos.row][pos.col];
-      pionValue = typeof boardValue === 'string' || boardValue === null ? 0 : boardValue;
-    }
-    
-    // Appliquer les multiplicateurs des cases spéciales (si pas encore utilisées)
-    let finalPionValue = pionValue;
-    if (cell.multiplier && cell.multiplier > 1 && !cell.used) {
-      finalPionValue *= cell.multiplier;
-      hasSpecialMultiplier = true;
-      maxMultiplier = Math.max(maxMultiplier, cell.multiplier);
-    }
-    
-    // Pour les jokers, ne pas ajouter de points au score de base
-    if (!joker) {
-      baseScore += finalPionValue;
+      const pionValue = typeof boardValue === 'string' || boardValue === null ? 0 : boardValue;
+      baseScore += pionValue;
     }
   }
 
-  // Si c'est un trio (3 jetons = 15 points base), ajouter le bonus de 15 points
+  // Vérifier s'il y a des cases spéciales dans l'ensemble
+  for (const pos of ensemble) {
+    const cell = specialCells[pos.row][pos.col];
+    if (cell.multiplier && cell.multiplier > 1 && !cell.used) {
+      hasSpecialMultiplier = true;
+      maxMultiplier = Math.max(maxMultiplier, cell.multiplier);
+    }
+  }
+
+  // Si c'est un trio qui fait 15 points, ajouter le bonus de 15 points
   if (ensemble.length === 3 && getTotalValue(ensemble, assignedJokers, board) === 15) {
-    baseScore += 15; // Ajouter le bonus de 15 points au score des pions
+    baseScore += 15; // Score de base du trio : 15 (pions) + 15 (bonus) = 30 points
+  }
+
+  // Appliquer le multiplicateur à tout l'ensemble si il y a une case spéciale
+  if (hasSpecialMultiplier) {
+    baseScore *= maxMultiplier;
   }
 
   return { score: baseScore };
