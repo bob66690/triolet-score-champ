@@ -175,6 +175,9 @@ export const TrioletGame = () => {
                   <Button onClick={handlePass} variant="outline">
                     Passer le tour
                   </Button>
+                  <Button onClick={handleRestart} variant="destructive" size="sm">
+                    Nouvelle partie
+                  </Button>
                 </div>
               </div>
             </Card>
