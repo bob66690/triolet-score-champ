@@ -156,12 +156,14 @@ const calculateEnsembleScore = (
   let hasSpecialMultiplier = false;
   let maxMultiplier = 1;
 
-  // Calculer le score de base (somme des valeurs des pions, sans les jokers)
+  // Calculer le score de base (somme des valeurs des pions, incluant les jokers)
   for (const pos of ensemble) {
     const joker = assignedJokers.find(j => j.position.row === pos.row && j.position.col === pos.col);
     
-    // Les jokers n'ajoutent pas de points au score de base
-    if (!joker) {
+    if (joker) {
+      // Les jokers comptent pour leur valeur assignée dans le score
+      baseScore += joker.assignedValue;
+    } else {
       const boardValue = board[pos.row][pos.col];
       const pionValue = typeof boardValue === 'string' || boardValue === null ? 0 : boardValue;
       baseScore += pionValue;
