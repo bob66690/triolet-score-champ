@@ -74,12 +74,12 @@ export const GameBoard = ({
                     isWinningCell(rowIndex, colIndex) && "text-white animate-pulse",
                     getTemporaryPion(rowIndex, colIndex) && "text-yellow-700"
                   )}>
-                    {cell || getTemporaryPion(rowIndex, colIndex)?.pion}
+                    {cell !== null ? cell : getTemporaryPion(rowIndex, colIndex)?.pion}
                   </span>
                 )}
                 
                 {/* Label de la case spéciale (seulement si pas de pion) */}
-                {!cell && !getTemporaryPion(rowIndex, colIndex) && specialCells[rowIndex][colIndex].type !== 'normal' && (
+                {cell === null && !getTemporaryPion(rowIndex, colIndex) && specialCells[rowIndex][colIndex].type !== 'normal' && (
                   <span className="text-xs font-semibold opacity-60 absolute inset-0 flex items-center justify-center">
                     {getSpecialCellLabel(specialCells[rowIndex][colIndex].type)}
                   </span>
