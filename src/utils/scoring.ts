@@ -81,13 +81,11 @@ const findEnsemblesWithNewPlacements = (
   newPlacements: { position: Position }[]
 ): Position[][] => {
   const ensembles: Position[][] = [];
-  const processedPositions = new Set<string>();
+  const processedLines = new Set<string>();
 
+  // Pour chaque nouveau placement, vérifier toutes les lignes possibles qui pourraient être affectées
   for (const placement of newPlacements) {
     const { row, col } = placement.position;
-    const posKey = `${row},${col}`;
-    
-    if (processedPositions.has(posKey)) continue;
 
     // Vérifier seulement 2 directions : horizontal et vertical (pas de diagonales)
     const directions = [
@@ -96,17 +94,34 @@ const findEnsemblesWithNewPlacements = (
     ];
 
     for (const { dr, dc } of directions) {
-      const ligne = findLineFromPosition(board, row, col, dr, dc);
-      
-      if (ligne.length >= 2) {
-        // Vérifier si cette ligne contient au moins un nouveau placement
-        const hasNewPlacement = ligne.some(pos => 
-          newPlacements.some(p => p.position.row === pos.row && p.position.col === pos.col)
-        );
+      // Vérifier plusieurs positions le long de cette direction pour trouver toutes les lignes
+      for (let offset = -4; offset <= 4; offset++) {
+        const startRow = row + offset * dr;
+        const startCol = col + offset * dc;
         
-        if (hasNewPlacement) {
-          ensembles.push(ligne);
-          ligne.forEach(pos => processedPositions.add(`${pos.row},${pos.col}`));
+        // Vérifier que la position de départ est valide et contient un pion
+        if (startRow >= 0 && startRow < board.length && 
+            startCol >= 0 && startCol < board[0].length && 
+            board[startRow][startCol] !== null) {
+          
+          const ligne = findLineFromPosition(board, startRow, startCol, dr, dc);
+          
+          if (ligne.length >= 2) {
+            // Créer un identifiant unique pour cette ligne
+            const lineId = ligne.map(pos => `${pos.row},${pos.col}`).sort().join('|');
+            
+            if (!processedLines.has(lineId)) {
+              // Vérifier si cette ligne contient au moins un nouveau placement
+              const hasNewPlacement = ligne.some(pos => 
+                newPlacements.some(p => p.position.row === pos.row && p.position.col === pos.col)
+              );
+              
+              if (hasNewPlacement) {
+                ensembles.push(ligne);
+                processedLines.add(lineId);
+              }
+            }
+          }
         }
       }
     }
