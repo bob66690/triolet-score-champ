@@ -213,9 +213,9 @@ export const useTrioletGame = () => {
         return prevState; // Invalide, ne pas changer l'état
       }
 
-      // Vérifier si c'est un Triolet (les 3 jetons du chevalet forment 15)
-      const isTrioletTurn = temporaryPlacements.length === 3 && 
-                           isTriolet(newState.playerHands[newState.currentPlayer]);
+      // Vérifier si c'est un Triolet (les 3 jetons posés forment 15)
+      const placedPions = temporaryPlacements.map(p => p.pion);
+      const isTrioletTurn = temporaryPlacements.length === 3 && isTriolet(placedPions);
 
       // Calculer le score du tour
       const scoringResult = calculateTurnScore(newState, temporaryPlacements, isTrioletTurn);
