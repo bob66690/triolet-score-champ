@@ -50,8 +50,12 @@ export const PlayerHand = ({
     }
   };
 
-  const getPionCount = (pion: number | 'X'): number => {
-    return pionBag[pion.toString()] || 0;
+  const getPionInitialCount = (pion: number | 'X'): number => {
+    const initialCounts: { [key: string]: number } = {
+      '0': 9, '1': 9, '2': 8, '3': 8, '4': 7, '5': 8, '6': 6, '7': 6,
+      '8': 4, '9': 4, '10': 3, '11': 3, '12': 2, '13': 2, '14': 1, '15': 1, 'X': 2
+    };
+    return initialCounts[pion.toString()] || 0;
   };
 
   return (
@@ -91,9 +95,9 @@ export const PlayerHand = ({
               )}
             >
               {pion}
-              {/* Pion count in bottom right corner */}
+              {/* Initial pion count in bottom right corner */}
               <span className="absolute bottom-0 right-0 text-xs bg-background text-foreground rounded-tl px-1 leading-none">
-                {getPionCount(pion)}
+                {getPionInitialCount(pion)}
               </span>
             </Button>
           ))}
