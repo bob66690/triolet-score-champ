@@ -50,6 +50,12 @@ export const validateNewPlacements = (
   const ensembles = findEnsemblesWithNewPlacements(board, newPlacements);
   
   for (const ensemble of ensembles) {
+    // Interdire les alignements de plus de 3 pions
+    if (ensemble.length > 3) {
+      invalidEnsembles.push(ensemble);
+      continue;
+    }
+    
     const totalValue = getTotalValueForEnsemble(ensemble, assignedJokers, board);
     
     if (ensemble.length === 3) {
@@ -58,8 +64,8 @@ export const validateNewPlacements = (
         invalidEnsembles.push(ensemble);
       }
     } else if (ensemble.length === 2) {
-      // Pour 2 pions alignés, interdire si la somme dépasse 15 ou est égale à 15
-      if (totalValue >= 15) {
+      // Pour 2 pions alignés, interdire si la somme dépasse 15
+      if (totalValue > 15) {
         invalidEnsembles.push(ensemble);
       }
     }
