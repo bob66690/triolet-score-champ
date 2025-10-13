@@ -160,8 +160,20 @@ export const useTrioletGame = () => {
 
     // Check if this is the first turn (no pions on board and no temporary placements)
     const hasPionsOnBoard = gameState.board.some(row => row.some(cell => cell !== null));
+    const centerPos = Math.floor(BOARD_SIZE / 2); // Position centrale = 7 pour un plateau 15x15
+    
     if (!hasPionsOnBoard && temporaryPositions.length === 0) {
-      return true; // First pion can be placed anywhere
+      // Premier pion: doit être placé sur la case centrale
+      return position.row === centerPos && position.col === centerPos;
+    }
+    
+    // Si c'est le premier tour mais pas le premier pion, vérifier qu'au moins un pion temporaire est au centre
+    if (!hasPionsOnBoard && temporaryPositions.length > 0) {
+      const hasCenterPion = temporaryPositions.some(p => p.row === centerPos && p.col === centerPos) ||
+                           (position.row === centerPos && position.col === centerPos);
+      if (!hasCenterPion) {
+        return false; // Premier tour: au moins un pion doit être au centre
+      }
     }
 
     // Check adjacency to existing pions or temporary placements
