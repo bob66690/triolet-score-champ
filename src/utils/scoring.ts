@@ -167,45 +167,50 @@ const calculateEnsembleScore = (
   board: (number | string | null)[][],
   isTriolet: boolean
 ): { score: number } => {
-  let baseScore = 0;
-  let hasSpecialMultiplier = false;
-  let maxMultiplier = 1;
+  let score = 0;
 
-  // Calculer le score de base (somme des valeurs des pions, SANS les jokers qui valent 0)
-  for (const pos of ensemble) {
-    const boardValue = board[pos.row][pos.col];
+  // Pour un DUO : calculer le score des pions individuellement avec multiplicateurs
+  if (ensemble.length === 2) {
+    for (const pos of ensemble) {
+      const boardValue = board[pos.row][pos.col];
+      let pionValue = 0;
+      
+      if (boardValue === 'X') {
+        // Les jokers valent 0 points pour le score
+        pionValue = 0;
+      } else if (boardValue !== null) {
+        pionValue = typeof boardValue === 'number' ? boardValue : 0;
+      }
+      
+      // Appliquer le multiplicateur de la case spéciale à ce pion
+      const cell = specialCells[pos.row][pos.col];
+      if (cell.multiplier && cell.multiplier > 1 && !cell.used) {
+        pionValue *= cell.multiplier;
+      }
+      
+      score += pionValue;
+    }
+  }
+  
+  // Pour un TRIO qui fait 15 points : 30 points de base (ou 60/90 avec multiplicateur)
+  else if (ensemble.length === 3 && getTotalValue(ensemble, assignedJokers, board) === 15) {
+    let trioScore = 30; // Score de base d'un trio : 30 points
     
-    if (boardValue === 'X') {
-      // Les jokers valent 0 points pour le score (règle officielle)
-      // Leur valeur assignée sert uniquement à former des combos de 15
-      baseScore += 0;
-    } else if (boardValue !== null) {
-      // Pour les pions normaux, utiliser leur valeur
-      const pionValue = typeof boardValue === 'number' ? boardValue : 0;
-      baseScore += pionValue;
+    // Vérifier s'il y a une case spéciale dans le trio
+    let maxMultiplier = 1;
+    for (const pos of ensemble) {
+      const cell = specialCells[pos.row][pos.col];
+      if (cell.multiplier && cell.multiplier > 1 && !cell.used) {
+        maxMultiplier = Math.max(maxMultiplier, cell.multiplier);
+      }
     }
+    
+    // Appliquer le multiplicateur au trio complet
+    trioScore *= maxMultiplier;
+    score = trioScore;
   }
 
-  // Vérifier s'il y a des cases spéciales dans l'ensemble
-  for (const pos of ensemble) {
-    const cell = specialCells[pos.row][pos.col];
-    if (cell.multiplier && cell.multiplier > 1 && !cell.used) {
-      hasSpecialMultiplier = true;
-      maxMultiplier = Math.max(maxMultiplier, cell.multiplier);
-    }
-  }
-
-  // Si c'est un trio qui fait 15 points, ajouter le bonus de 15 points
-  if (ensemble.length === 3 && getTotalValue(ensemble, assignedJokers, board) === 15) {
-    baseScore += 15; // Score de base du trio : 15 (pions) + 15 (bonus) = 30 points
-  }
-
-  // Appliquer le multiplicateur à tout l'ensemble si il y a une case spéciale
-  if (hasSpecialMultiplier) {
-    baseScore *= maxMultiplier;
-  }
-
-  return { score: baseScore };
+  return { score };
 };
 
 // Calcule la valeur totale d'un ensemble (pour vérifier si c'est 15)
