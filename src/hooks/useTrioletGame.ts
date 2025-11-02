@@ -251,13 +251,7 @@ export const useTrioletGame = () => {
         newState.specialCells[placement.position.row][placement.position.col].type === 'replay'
       );
 
-      // Piocher de nouveaux jetons pour compléter la main
-      const currentHand = newState.playerHands[newState.currentPlayer];
-      const pionsNeeded = 3 - currentHand.length;
-      const drawnPions = drawPionsFromBag(newState.pionBag, pionsNeeded);
-      newState.playerHands[newState.currentPlayer] = [...currentHand, ...drawnPions];
-
-      // Vérifier les conditions de fin de partie
+      // Vérifier AVANT de compléter la main si la partie est terminée
       const endCondition = checkEndGameConditions(
         newState.pionBag,
         newState.playerHands,
@@ -299,6 +293,12 @@ export const useTrioletGame = () => {
           newState.gameStatus = 'draw';
         }
       } else {
+        // Piocher de nouveaux jetons pour compléter la main SEULEMENT si la partie continue
+        const currentHand = newState.playerHands[newState.currentPlayer];
+        const pionsNeeded = 3 - currentHand.length;
+        const drawnPions = drawPionsFromBag(newState.pionBag, pionsNeeded);
+        newState.playerHands[newState.currentPlayer] = [...currentHand, ...drawnPions];
+        
         // Changer de joueur sauf si rejoueur ou fin de partie
         if (!hasReplayCell) {
           newState.currentPlayer = newState.currentPlayer === 1 ? 2 : 1;
