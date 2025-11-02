@@ -12,11 +12,16 @@ const INITIAL_PION_BAG = {
 
 // Helper function to draw pions from bag
 const drawPionsFromBag = (bag: { [key: string]: number }, count: number): (number | 'X')[] => {
-  const availablePions = Object.entries(bag).filter(([_, count]) => count > 0);
   const drawnPions: (number | 'X')[] = [];
   
-  for (let i = 0; i < count && availablePions.length > 0; i++) {
-    const randomIndex = Math.floor(Math.random() * availablePions.reduce((sum, [_, count]) => sum + count, 0));
+  for (let i = 0; i < count; i++) {
+    // Recalculer les pions disponibles à chaque itération pour éviter de tirer le même pion deux fois
+    const availablePions = Object.entries(bag).filter(([_, count]) => count > 0);
+    
+    if (availablePions.length === 0) break;
+    
+    const totalPions = availablePions.reduce((sum, [_, count]) => sum + count, 0);
+    const randomIndex = Math.floor(Math.random() * totalPions);
     let currentSum = 0;
     
     for (const [value, pionCount] of availablePions) {
