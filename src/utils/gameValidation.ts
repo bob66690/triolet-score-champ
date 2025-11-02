@@ -169,7 +169,7 @@ const getTotalValueForEnsemble = (
 export interface EndGameCondition {
   isGameOver: boolean;
   reason: 'normal_end' | 'no_moves' | 'empty_bag_and_player_finished';
-  winner?: number;
+  playerWhoFinished?: number; // Le joueur qui a placé son dernier pion
 }
 
 export const checkEndGameConditions = (
@@ -181,15 +181,16 @@ export const checkEndGameConditions = (
   // Vérifier si le sac est vide
   const bagEmpty = Object.values(pionBag).every(count => count === 0);
   
-  // Vérifier si un joueur n'a plus de jetons
+  // Vérifier si un joueur n'a plus de jetons (vient de placer son dernier pion)
   const playersWithoutTokens = Object.entries(playerHands).filter(([_, hand]) => hand.length === 0);
   
   if (bagEmpty && playersWithoutTokens.length > 0) {
-    const winnerPlayer = parseInt(playersWithoutTokens[0][0]);
+    // Un joueur a terminé, mais le gagnant sera déterminé par le score final
+    const playerWhoFinished = parseInt(playersWithoutTokens[0][0]);
     return {
       isGameOver: true,
       reason: 'empty_bag_and_player_finished',
-      winner: winnerPlayer
+      playerWhoFinished
     };
   }
   

@@ -261,31 +261,37 @@ export const useTrioletGame = () => {
       );
       
       if (endCondition.isGameOver) {
-        newState.gameStatus = endCondition.winner ? 'won' : 'draw';
-        if (endCondition.winner) {
-          newState.winner = endCondition.winner as Player;
-          // Calculer le score final pour le gagnant
-          const opponentHands = Object.entries(newState.playerHands)
-            .filter(([player]) => parseInt(player) !== endCondition.winner)
+        // Calculer les scores finaux pour tous les joueurs
+        Object.keys(newState.playerHands).forEach(playerKey => {
+          const player = parseInt(playerKey) as Player;
+          const otherPlayers = Object.entries(newState.playerHands)
+            .filter(([p]) => parseInt(p) !== player)
             .map(([_, hand]) => hand);
-          newState.playerScores[endCondition.winner] = calculateFinalScore(
-            newState.playerScores[endCondition.winner],
-            newState.playerHands[endCondition.winner],
-            opponentHands,
-            true
+          
+          // Si c'est le joueur qui a terminé (plus de pions), il a potentiellement gagné
+          const isPlayerWhoFinished = player === endCondition.playerWhoFinished;
+          
+          newState.playerScores[player] = calculateFinalScore(
+            newState.playerScores[player],
+            newState.playerHands[player],
+            otherPlayers,
+            isPlayerWhoFinished
           );
-          // Calculer le score final pour les perdants
-          Object.keys(newState.playerHands).forEach(playerKey => {
-            const player = parseInt(playerKey) as Player;
-            if (player !== endCondition.winner) {
-              newState.playerScores[player] = calculateFinalScore(
-                newState.playerScores[player],
-                newState.playerHands[player],
-                [],
-                false
-              );
-            }
-          });
+        });
+        
+        // Déterminer le gagnant en comparant les scores finaux
+        const scores: [Player, number][] = Object.entries(newState.playerScores).map(
+          ([player, score]) => [parseInt(player) as Player, score]
+        );
+        const maxScore = Math.max(...scores.map(([_, score]) => score));
+        const winnersWithMaxScore = scores.filter(([_, score]) => score === maxScore);
+        
+        if (winnersWithMaxScore.length === 1) {
+          newState.gameStatus = 'won';
+          newState.winner = winnersWithMaxScore[0][0];
+        } else {
+          // Égalité
+          newState.gameStatus = 'draw';
         }
       } else {
         // Changer de joueur sauf si rejoueur ou fin de partie
